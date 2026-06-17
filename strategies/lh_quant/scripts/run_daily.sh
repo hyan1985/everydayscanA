@@ -61,6 +61,7 @@ fi
 
 python3 - <<'PY'
 import os
+import pandas as pd
 from datetime import datetime
 from pathlib import Path
 
@@ -73,11 +74,23 @@ out_csv = os.getenv("OUT_CSV", "").strip()
 df = run_daily_selection(token=token, top_n=top_n)
 if out_csv:
     Path(out_csv).parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(out_csv, index=False, encoding="utf-8-sig")
-    cn_csv = out_csv.replace(".csv", "_cn.csv")
-    to_chinese_columns(df).to_csv(cn_csv, index=False, encoding="utf-8-sig")
-    print(f"\n已导出: {out_csv}")
-    print(f"中文字段导出: {cn_csv}")
+    if df is None or df.empty:
+        # 空结果也要写表头，防止下游 csv 读取崩溃
+        df_empty = pd.DataFrame(columns=["ts_code", "name", "industry", "score_norm",
+            "pool_type", "strategy", "strategy_short", "latest_trade_date"])
+        df_empty.to_csv(out_csv, index=False, encoding="utf-8-sig")
+        cn_csv = out_csv.replace(".csv", "_cn.csv")
+        df_empty.rename(columns={"ts_code": "股票代码", "name": "股票名称",
+            "industry": "行业", "score_norm": "归一化得分"}).to_csv(cn_csv, index=False, encoding="utf-8-sig")
+        print(f"\n⚠ 当日双池无候选，已写入空表头 CSV")
+        print(f"已导出: {out_csv} (0行)")
+        print(f"中文字段导出: {cn_csv} (0行)")
+    else:
+        df.to_csv(out_csv, index=False, encoding="utf-8-sig")
+        cn_csv = out_csv.replace(".csv", "_cn.csv")
+        to_chinese_columns(df).to_csv(cn_csv, index=False, encoding="utf-8-sig")
+        print(f"\n已导出: {out_csv}")
+        print(f"中文字段导出: {cn_csv}")
 PY
 
 if [[ "${QUANT_SKIP_POST_TASKS:-}" != "1" ]]; then

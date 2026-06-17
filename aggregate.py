@@ -557,7 +557,7 @@ def _read_csv_safe(path: Path) -> pd.DataFrame:
     for enc in ("utf-8-sig", "utf-8", "gbk"):
         try:
             return pd.read_csv(path, encoding=enc)
-        except (UnicodeDecodeError, UnicodeError):
+        except (UnicodeDecodeError, UnicodeError, pd.errors.EmptyDataError):
             continue
     return pd.DataFrame()
 

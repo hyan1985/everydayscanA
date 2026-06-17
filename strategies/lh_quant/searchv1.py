@@ -1432,6 +1432,28 @@ def run_daily_selection(token: str, top_n: int = 8) -> pd.DataFrame:
         & (daily_basic_today["pe_ttm"] >= 0)
         & (daily_basic_today["pe_ttm"] <= 80)
     ][["ts_code", "pe_ttm"]].copy()
+    # 当天 PE 数据不足时，回退到最近有数据的交易日
+    if len(pe_ok) < 100:
+        pe_back = end_dt.date() - timedelta(days=1)
+        for _attempt in range(5):
+            pe_back_str = pe_back.strftime("%Y-%m-%d")
+            if not fetcher.pro.trade_cal(exchange="SSE", start_date=pe_back.strftime("%Y%m%d"),
+                                         end_date=pe_back.strftime("%Y%m%d"), is_open="1").empty:
+                try:
+                    db_back = fetcher.get_daily_basic(codes_all, pe_back_str)
+                    db_back["pe_ttm"] = pd.to_numeric(db_back.get("pe_ttm", np.nan), errors="coerce")
+                    pe_fallback = db_back[
+                        db_back["pe_ttm"].notna()
+                        & (db_back["pe_ttm"] >= 0)
+                        & (db_back["pe_ttm"] <= 80)
+                    ][["ts_code", "pe_ttm"]].copy()
+                    if len(pe_fallback) >= 100:
+                        pe_ok = pe_fallback
+                        print(f"A-1 PE 数据缺失，回退至 {pe_back_str}（{len(pe_fallback)} 只）")
+                        break
+                except Exception:
+                    pass
+            pe_back -= timedelta(days=1)
     a1 = universe.merge(pe_ok, on="ts_code", how="inner")
     print(f"A-1 PE 0-80：{len(a1)}")
     if a1.empty:
