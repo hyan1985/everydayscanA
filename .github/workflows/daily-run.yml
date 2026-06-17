@@ -6,12 +6,20 @@ on:
     - cron: "0 10 * * 1-5"
   workflow_dispatch:  # 允许手动触发
 
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   run-strategies:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      pages_ready: ${{ steps.pages.outputs.ready }}
     permissions:
       contents: write
+      pages: write
+      id-token: write
 
     steps:
       - name: Checkout
@@ -55,3 +63,49 @@ jobs:
             git commit -m "daily: auto update $(date +%F)" &&
             git push
           )
+
+      - name: Prepare GitHub Pages site
+        if: always()
+        id: pages
+        run: |
+          if [ ! -f output/unified_dashboard.html ]; then
+            echo "No dashboard to publish, skip Pages upload."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p _site
+          cp output/index.html _site/ 2>/dev/null || true
+          cp output/unified_dashboard.html _site/
+          cp output/unified_wechat.txt _site/ 2>/dev/null || true
+          cp output/unified_all_picks.csv _site/ 2>/dev/null || true
+          cp output/.run_status.json _site/ 2>/dev/null || true
+          if [ ! -f _site/index.html ]; then
+            echo '<!DOCTYPE html><meta http-equiv="refresh" content="0;url=unified_dashboard.html">' > _site/index.html
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Pages
+        if: steps.pages.outputs.ready == 'true'
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        if: steps.pages.outputs.ready == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy-pages:
+    if: needs.run-strategies.outputs.pages_ready == 'true'
+    needs: run-strategies
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
