@@ -1,0 +1,20 @@
+{
+  "bull": {
+    "floating_stop_loss_pct": 0.08,
+    "floating_take_profit_pct": 0.16,
+    "floating_min_profit_to_trail": 0.06,
+    "floating_trail_drawdown_pct": 0.05
+  },
+  "range": {
+    "floating_stop_loss_pct": 0.06,
+    "floating_take_profit_pct": 0.12,
+    "floating_min_profit_to_trail": 0.04,
+    "floating_trail_drawdown_pct": 0.03
+  },
+  "bear": {
+    "floating_stop_loss_pct": 0.045,
+    "floating_take_profit_pct": 0.08,
+    "floating_min_profit_to_trail": 0.025,
+    "floating_trail_drawdown_pct": 0.02
+  }
+}

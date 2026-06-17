@@ -1,0 +1,50 @@
+# 长鑫 / 长江存储 IPO 供应链 — 简易上车策略
+name: "存储IPO供应链"
+description: "围绕长鑫(DRAM)、长江(NAND) IPO 映射的设备/材料/封测链，筛可低吸上车标的"
+
+# 优先环节（不含模组设计股，降低蹭概念噪音）
+core_tiers:
+  - "半导体设备"
+  - "材料与零部件"
+  - "制造封测"
+
+# 观察档可含模组，但门槛更严
+watch_tiers:
+  - "存储设计/模组"
+
+exclude_codes:
+  - "603360.SH"  # 百傲化学 — 立案
+
+# 同花顺概念检索（构建成分池）
+search_keywords:
+  - "长鑫"
+  - "长江存储"
+  - "长存"
+  - "存储芯片"
+  - "半导体存储"
+  - "DRAM"
+  - "NAND"
+  - "闪存"
+  - "HBM"
+  - "先进封装"
+  - "集成电路封测"
+  - "半导体设备"
+  - "光刻"
+  - "硅片"
+
+# —— 可做（上车）条件 ——
+entry:
+  pct_chg_min: -3.0
+  pct_chg_max: 4.5
+  turnover_min: 2.5
+  turnover_max: 18.0
+  circ_mv_min_yi: 80
+  amount_min_yi: 1.5
+  prefer_moneyflow_positive: true
+
+# —— 观察档（偏强但未追高）——
+watch:
+  pct_chg_max: 7.0
+  turnover_max: 25.0
+
+top_n: 15

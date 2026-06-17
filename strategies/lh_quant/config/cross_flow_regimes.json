@@ -1,0 +1,20 @@
+{
+  "bull": {
+    "bull_min_rotation_score": 38,
+    "entry_score_pref_min": 1,
+    "decay_exit_require_ma_and_macd": 0
+  },
+  "range": {
+    "range_min_rotation_score": 58,
+    "wr_trend_score_min": 54,
+    "pre_cross_gap_shrink_ratio_max": 0.45,
+    "entry_score_pref_min": 3,
+    "decay_exit_require_ma_and_macd": 1
+  },
+  "bear": {
+    "bear_min_rotation_score": 62,
+    "wr_trend_score_min": 52,
+    "entry_score_pref_min": 2,
+    "decay_exit_require_ma_and_macd": 0
+  }
+}

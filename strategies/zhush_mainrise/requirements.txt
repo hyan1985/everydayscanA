@@ -1,0 +1,4 @@
+tushare
+pandas
+numpy
+tqdm

@@ -1,0 +1,13 @@
+{
+  "valuation_candidate_top_n": 60,
+  "valuation_weight_total_score": 0.9,
+  "valuation_weight_5y": 0.12,
+  "valuation_weight_3y_confirm": 0.0,
+  "concept_rotation_weight": 0.12,
+  "bull_valuation_scale": 0.35,
+  "bull_bypass_enabled": 1,
+  "bull_bypass_momentum_20d_min": 0.08,
+  "v4_valuation_weight": 0.02,
+  "v4_strong_momentum_bypass": 1,
+  "v4_bypass_momentum_20d_min": 0.06
+}

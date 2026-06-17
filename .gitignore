@@ -1,0 +1,30 @@
+# Tushare 缓存（大量 Parquet 文件，不提交）
+data/
+
+# 各策略输出（由流水线自动生成并提交）
+strategies/ql_dragon/output/
+strategies/zhush_mainrise/output/
+strategies/ph_afterclose/reports/
+strategies/lh_quant/output/
+
+# 密钥文件
+.secrets/
+**/tushare_token
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# 临时文件
+*.log
+*.tmp

@@ -1,0 +1,57 @@
+name: 每日选股流水线
+
+on:
+  schedule:
+    # 北京时间 18:00 (UTC+8) = UTC 10:00，周一到周五
+    - cron: "0 10 * * 1-5"
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  run-strategies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run all strategies + aggregate
+        env:
+          TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+          # 量化蓄势突破超时后的额外等待秒数（默认 600，可加大）
+          LH_QUANT_HEAL_WAIT: "600"
+        run: bash run_all.sh
+
+      - name: Upload dashboard artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-output-${{ github.run_id }}
+          path: |
+            output/unified_dashboard.html
+            output/unified_wechat.txt
+            output/unified_all_picks.csv
+            output/.run_status.json
+          retention-days: 30
+
+      - name: Commit daily output back to repo
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/ strategies/lh_quant/output/daily/
+          git diff --cached --quiet || (
+            git commit -m "daily: auto update $(date +%F)" &&
+            git push
+          )

@@ -1,0 +1,38 @@
+{
+  "profile_name": "dynamic_decay_mainline_v1",
+  "baseline_summary_file": "output/backtest/backtest_summary_5y_20260425_222844.json",
+  "frozen_at": "2026-04-26",
+  "params": {
+    "years": 5,
+    "top_n": 3,
+    "rebalance_freq": "D",
+    "hold_days": 5,
+    "execution_mode": "dynamic_decay",
+    "max_hold_days": 30,
+    "regime_cross_flow": true,
+    "regime_floating_pnl": false
+  },
+  "guardrails": {
+    "annual_return_floor": 0.35,
+    "max_drawdown_floor": -0.45,
+    "sharpe_floor": 0.9,
+    "excess_win_rate_floor": 0.5
+  },
+  "notes": [
+    "guardrails 用于后续参数回归检查，不代表实盘承诺。",
+    "若回测样本窗口变化或股票池规则变化，需重新生成基线。",
+    "快速稳健性验证: output/analysis/dynamic_decay_fast250_verify_1y_20260426_011956.csv",
+    "Fast250(1y)中 top_n=4 表现更强，但正式冻结仍以5y全样本主线 top_n=3 为准。",
+    "3Y Fast150复核: output/analysis/dynamic_decay_fast150_verify_3y_20260426_112858.csv",
+    "1Y与3Y快速样本对 cross_flow 与 top_n=4 结论不一致，说明进攻参数稳定性不足，继续维持主线参数不变。"
+  ],
+  "alternatives": [
+    {
+      "name": "dynamic_decay_fast250_aggressive",
+      "top_n": 4,
+      "max_hold_days": 30,
+      "regime_cross_flow": true,
+      "evidence_file": "output/analysis/dynamic_decay_fast250_verify_1y_20260426_011956.csv"
+    }
+  ]
+}

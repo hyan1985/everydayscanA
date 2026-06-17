@@ -1,0 +1,238 @@
+
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <title>主升浪选股战报</title>
+        <style>
+            :root {
+                --bg: #0f172a;
+                --card-bg: #1e293b;
+                --text: #f8fafc;
+                --text-muted: #94a3b8;
+                --border: #334155;
+                --accent: #38bdf8;
+            }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                background-color: var(--bg);
+                color: var(--text);
+                margin: 0;
+                padding: 20px;
+                display: flex;
+                justify-content: center;
+            }
+            .screenshot-container {
+                background-color: var(--card-bg);
+                border-radius: 12px;
+                border: 1px solid var(--border);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+                overflow: hidden;
+                width: 1050px;
+            }
+            .header {
+                padding: 16px 24px;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: linear-gradient(90deg, #1e293b, #0f172a);
+            }
+            .header h1 {
+                margin: 0;
+                font-size: 20px;
+                color: #e2e8f0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .header .meta {
+                font-size: 13px;
+                color: var(--text-muted);
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+            }
+            th {
+                background-color: rgba(15, 23, 42, 0.4);
+                color: var(--text-muted);
+                font-weight: 500;
+                text-align: left;
+                padding: 10px 12px;
+                border-bottom: 1px solid var(--border);
+                white-space: nowrap;
+            }
+            td {
+                padding: 8px 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+                vertical-align: middle;
+            }
+            tr:nth-child(even) {
+                background-color: rgba(255, 255, 255, 0.01);
+            }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .font-mono { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; }
+            .font-bold { font-weight: 600; color: #e2e8f0; }
+            
+            .score-box {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-family: monospace;
+                font-size: 14px;
+            }
+            .score-high { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+            .score-medium { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+            .score-normal { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+            
+            .penalty-red { color: #ef4444; font-weight: bold; }
+            .penalty-none { color: #475569; }
+            
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 4px;
+                font-size: 11px;
+            }
+            .badge-yes { color: #10b981; font-weight: bold; }
+            .badge-no { color: #64748b; }
+            
+            .concepts-wrapper {
+                display: flex;
+                gap: 4px;
+                flex-wrap: wrap;
+            }
+            .concept-tag {
+                background: rgba(56, 189, 248, 0.1);
+                color: #7dd3fc;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 11px;
+                white-space: nowrap;
+            }
+            .footer {
+                padding: 12px 24px;
+                font-size: 12px;
+                color: var(--text-muted);
+                background-color: rgba(15, 23, 42, 0.6);
+                display: flex;
+                justify-content: space-between;
+            }
+            .highlight-text { color: #38bdf8; }
+        </style>
+    </head>
+    <body>
+        <div class="screenshot-container" id="capture-area">
+            <div class="header">
+                <h1>🔥 十五五主升浪战报 (Top 20)</h1>
+                <div class="meta">生成日期：2026-06-16 | 附带防追高过滤</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>代码</th>
+                        <th>名称</th>
+                        <th>总得分</th>
+                        <th class="text-center">超涨扣分</th>
+                        <th>核心概念</th>
+                        <th class="text-center">缺口不补</th>
+                        <th class="text-center">20日内涨停</th>
+                        <th class="text-center">连阳天数</th>
+                        <th class="text-center">连续放量</th>
+                        <th class="text-center">均线多头</th>
+                        <th class="text-right">换手率</th>
+                        <th class="text-right">流通市值</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr>
+            <td class="font-mono">000630.SZ</td>
+            <td class="font-bold">铜陵有色</td>
+            <td><div class="score-box score-high">85</div></td>
+            <td class="text-center"><span class='penalty-red'>-10</span></td>
+            <td><div class="concepts-wrapper"><span class='concept-tag'>铜</span><span class='concept-tag'>黄金概念</span><span class='concept-tag'>...</span></div></td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-center font-mono">2</td>
+            <td class="text-center font-mono">6</td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-right font-mono">7.39%</td>
+            <td class="text-right font-mono">843.52</td>
+        </tr>
+        
+        <tr>
+            <td class="font-mono">600460.SH</td>
+            <td class="font-bold">士兰微</td>
+            <td><div class="score-box score-medium">75</div></td>
+            <td class="text-center"><span class='penalty-red'>-5</span></td>
+            <td><div class="concepts-wrapper"><span class='concept-tag'>半导体产品与设备Ⅱ(A股)</span><span class='concept-tag'>半导体产品与设备Ⅲ(A股)</span><span class='concept-tag'>...</span></div></td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-center font-mono">1</td>
+            <td class="text-center font-mono">2</td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-right font-mono">10.75%</td>
+            <td class="text-right font-mono">637.01</td>
+        </tr>
+        
+        <tr>
+            <td class="font-mono">300105.SZ</td>
+            <td class="font-bold">龙源技术</td>
+            <td><div class="score-box score-medium">75</div></td>
+            <td class="text-center"><span class='penalty-none'>0</span></td>
+            <td><div class="concepts-wrapper"><span class='concept-tag'>华为概念</span><span class='concept-tag'>储能</span></div></td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-center font-mono">1</td>
+            <td class="text-center font-mono">1</td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-right font-mono">6.30%</td>
+            <td class="text-right font-mono">35.00</td>
+        </tr>
+        
+        <tr>
+            <td class="font-mono">603070.SH</td>
+            <td class="font-bold">万控智造</td>
+            <td><div class="score-box score-medium">75</div></td>
+            <td class="text-center"><span class='penalty-none'>0</span></td>
+            <td><div class="concepts-wrapper"><span class='concept-tag'>电网设备</span><span class='concept-tag'>智能电网</span><span class='concept-tag'>...</span></div></td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-center font-mono">2</td>
+            <td class="text-center font-mono">3</td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-center"><span class='badge badge-no'>✘</span></td>
+            <td class="text-right font-mono">4.34%</td>
+            <td class="text-right font-mono">68.17</td>
+        </tr>
+        
+        <tr>
+            <td class="font-mono">300066.SZ</td>
+            <td class="font-bold">三川智慧</td>
+            <td><div class="score-box score-normal">70</div></td>
+            <td class="text-center"><span class='penalty-red'>-10</span></td>
+            <td><div class="concepts-wrapper"><span class='concept-tag'>稀土永磁</span><span class='concept-tag'>工业互联网</span><span class='concept-tag'>...</span></div></td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-center font-mono">1</td>
+            <td class="text-center font-mono">2</td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-center"><span class='badge badge-yes'>✔</span></td>
+            <td class="text-right font-mono">15.31%</td>
+            <td class="text-right font-mono">67.67</td>
+        </tr>
+        
+                </tbody>
+            </table>
+            <div class="footer">
+                <span>策略核心：抓取缺口未补、刚刚放量脱离底部的标的。</span>
+                <span><span class="highlight-text">Antigravity Quant System</span> Auto-Generated</span>
+            </div>
+        </div>
+    </body>
+    </html>
+    

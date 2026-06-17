@@ -1,0 +1,8 @@
+{
+  "max_volatility_30d": 0.7,
+  "min_breakout_readiness": 35.0,
+  "min_turnover_rate": 0.2,
+  "max_turnover_rate": 20.0,
+  "max_industry_ratio": 0.35,
+  "stop_loss_pct": 0.08
+}

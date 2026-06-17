@@ -1,0 +1,313 @@
+def run_daily_selection(token: str, top_n: int = 8) -> pd.DataFrame:
+    # ─────────────────────────────────────────────────────────────
+    # 双池并行：版本A — 超卖反弹 + 版本B — 科技成长
+    # ─────────────────────────────────────────────────────────────
+    today = datetime.now().date()
+    raw_end_date = today.strftime("%Y-%m-%d")
+    fetcher = DataFetcher(token=token)
+    end_date = fetcher.get_latest_trade_date(raw_end_date)
+
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    end_ymd = end_dt.strftime("%Y%m%d")
+    start_260 = (end_dt.date() - timedelta(days=420)).strftime("%Y-%m-%d")
+    start_5y = (end_dt - timedelta(days=365 * 5 + 20)).strftime("%Y-%m-%d")
+
+    basic = fetcher.get_stock_basic_mainboard()
+    universe = basic[["ts_code", "name", "industry"]].drop_duplicates(subset=["ts_code"]).copy()
+    codes_all = universe["ts_code"].astype(str).tolist()
+    print(f"选股日期: {end_date} | 全市场候选(剔ST/北交等): {len(codes_all)}")
+
+    # ── 公共数据：日线基础 + 同花顺概念映射 ──
+    daily_basic_today = fetcher.get_daily_basic(codes_all, end_date)
+    daily_basic_today["pe_ttm"] = pd.to_numeric(daily_basic_today.get("pe_ttm", np.nan), errors="coerce")
+    daily_basic_today["total_mv"] = pd.to_numeric(daily_basic_today.get("total_mv", np.nan), errors="coerce")
+
+    ths_map: dict[str, str] = {}
+    try:
+        idx = fetcher.pro.ths_index()
+        if idx is not None and not idx.empty and "ts_code" in idx.columns and "name" in idx.columns:
+            idx = idx.copy()
+            idx["ts_code"] = idx["ts_code"].astype(str)
+            idx["name"] = idx["name"].astype(str)
+            idx_pick = idx.head(200)
+            pairs: list[tuple[str, str]] = []
+            for _, r in idx_pick.iterrows():
+                c = str(r["ts_code"])
+                nm = str(r["name"])
+                try:
+                    m = fetcher.pro.ths_member(ts_code=c)
+                except Exception:
+                    continue
+                if m is None or m.empty or "con_code" not in m.columns:
+                    continue
+                for code in m["con_code"].astype(str).tolist():
+                    pairs.append((code, nm))
+            if pairs:
+                inv = pd.DataFrame(pairs, columns=["ts_code", "concept1"])
+                inv = inv.sort_values(["ts_code", "concept1"]).drop_duplicates(subset=["ts_code"], keep="first")
+                ths_map = dict(zip(inv["ts_code"], inv["concept1"]))
+    except Exception:
+        ths_map = {}
+
+    def _apply_ths(df: pd.DataFrame) -> pd.DataFrame:
+        df["ths_concept1"] = df["ts_code"].map(lambda x: ths_map.get(str(x), ""))
+        df["concept"] = df["ths_concept1"].fillna("")
+        return df
+
+    # ── 布林带宽度计算（复用）──
+    def _bb_width_metrics(code: str) -> tuple[float, float]:
+        df = fetcher.get_stock_daily(code, start_260, end_date)
+        if df is None or df.empty or "close" not in df.columns:
+            return (np.nan, np.nan)
+        c = pd.to_numeric(df["close"], errors="coerce").dropna()
+        if len(c) < 260:
+            return (np.nan, np.nan)
+        ma20 = c.rolling(20).mean()
+        std20 = c.rolling(20).std()
+        upper = ma20 + 2 * std20
+        lower = ma20 - 2 * std20
+        width = (upper - lower) / ma20.replace(0, np.nan)
+        width = width.dropna()
+        if len(width) < 250:
+            return (np.nan, np.nan)
+        cur = float(width.iloc[-1])
+        mean250 = float(width.tail(250).mean())
+        return (cur, mean250)
+
+    def _bb_filter(df_in: pd.DataFrame, quantile: float = 0.30) -> pd.DataFrame:
+        codes = df_in["ts_code"].astype(str).tolist()
+        bb_cur = []
+        bb_mean = []
+        for c in codes:
+            cur, m250 = _bb_width_metrics(c)
+            bb_cur.append(cur)
+            bb_mean.append(m250)
+        df_in["bb_width_cur"] = bb_cur
+        df_in["bb_width_mean250"] = bb_mean
+        df_in["bb_width_ratio"] = df_in["bb_width_cur"] / df_in["bb_width_mean250"].replace(0, np.nan)
+        th = float(pd.to_numeric(df_in["bb_width_ratio"], errors="coerce").quantile(quantile))
+        if not np.isfinite(th):
+            th = 0.9
+        return df_in[df_in["bb_width_ratio"].notna() & (df_in["bb_width_ratio"] <= th)].copy()
+
+    def _turnover_60d_avg(code: str) -> float:
+        hist = fetcher.pro.daily_basic(
+            ts_code=code,
+            start_date=fetcher._to_ts_date((end_dt.date() - timedelta(days=120)).strftime("%Y-%m-%d")),
+            end_date=fetcher._to_ts_date(end_date),
+            fields="trade_date,ts_code,turnover_rate",
+        )
+        if hist is None or hist.empty or "turnover_rate" not in hist.columns:
+            return np.nan
+        x = pd.to_numeric(hist["turnover_rate"], errors="coerce").dropna().tail(60)
+        if len(x) < 30:
+            return np.nan
+        return float(x.mean())
+
+    def _calc_turnover(df_in: pd.DataFrame) -> pd.DataFrame:
+        codes = df_in["ts_code"].astype(str).tolist()
+        df_in["turnover_60d_avg"] = [ _turnover_60d_avg(c) for c in codes ]
+        return df_in
+
+    def _roe_latest(code: str) -> float:
+        fi = fetcher.get_fina_indicator_latest(code)
+        if fi is None or fi.empty:
+            return np.nan
+        for col in ("roe_dt", "roe"):
+            if col in fi.columns:
+                v = pd.to_numeric(fi[col].iloc[0], errors="coerce")
+                if pd.notna(v):
+                    return float(v)
+        return np.nan
+
+    def _q_rev_yu(code: str) -> float:
+        """营收同比增长率（近一季度）"""
+        fi = fetcher.get_fina_indicator_latest(code)
+        if fi is None or fi.empty:
+            return np.nan
+        for col in ("q_rev_yu", "q_gr_yoy", "revenue_yoy"):
+            if col in fi.columns:
+                v = pd.to_numeric(fi[col].iloc[0], errors="coerce")
+                if pd.notna(v):
+                    return float(v)
+        return np.nan
+
+    def _score_pool(df_in: pd.DataFrame) -> pd.DataFrame:
+        bw = df_in["bb_width_cur"] / df_in["bb_width_mean250"].replace(0, np.nan)
+        score = (1.0 - bw).clip(0, 1) * 60
+        roe = pd.to_numeric(df_in.get("roe", np.nan), errors="coerce").fillna(0)
+        score += (roe / 20.0).clip(0, 1) * 20
+        df_in["score_raw"] = score.round(4)
+        df_in["score_norm"] = (score / score.max() * 100).fillna(0).round(1)
+        return df_in
+
+    # ─────────────────────────────────────────────
+    # 版本A：超卖反弹（原4规则—已放宽阈值）
+    # ─────────────────────────────────────────────
+    print("\n===== 版本A：超卖反弹 =====")
+    pe_ok = daily_basic_today[
+        daily_basic_today["pe_ttm"].notna()
+        & (daily_basic_today["pe_ttm"] >= 0)
+        & (daily_basic_today["pe_ttm"] <= 80)
+    ][["ts_code", "pe_ttm"]].copy()
+    a1 = universe.merge(pe_ok, on="ts_code", how="inner")
+    print(f"A-1 PE 0-80：{len(a1)}")
+    if a1.empty:
+        pool_a = pd.DataFrame()
+    else:
+        a1 = _calc_turnover(a1)
+        a2 = a1[a1["turnover_60d_avg"].notna() & (a1["turnover_60d_avg"] >= 0.8) & (a1["turnover_60d_avg"] <= 5.0)].copy()
+        print(f"A-2 换手 0.8%-5%：{len(a2)}")
+        if a2.empty:
+            pool_a = pd.DataFrame()
+        else:
+            a3 = _bb_filter(a2, quantile=0.30)
+            print(f"A-3 布林带收敛(30%)：{len(a3)}")
+            if a3.empty:
+                pool_a = pd.DataFrame()
+            else:
+                # WR14信号
+                def _wr14_series(df, period=14):
+                    h = pd.to_numeric(df["high"], errors="coerce")
+                    l = pd.to_numeric(df["low"], errors="coerce")
+                    c = pd.to_numeric(df["close"], errors="coerce")
+                    hh = h.rolling(period).max()
+                    ll = l.rolling(period).min()
+                    wr = (hh - c) / (hh - ll).replace(0, np.nan) * 100
+                    return wr
+                sig_ok = []
+                sig_day = []
+                wr_now = []
+                for c in a3["ts_code"].astype(str).tolist():
+                    df = fetcher.get_stock_daily(c, (end_dt.date() - timedelta(days=80)).strftime("%Y-%m-%d"), end_date)
+                    ok, day, wrv = False, "", np.nan
+                    if df is not None and not df.empty and len(df) >= 25:
+                        df = df.sort_index()
+                        wr14 = _wr14_series(df, 14)
+                        ma5 = pd.to_numeric(df["close"], errors="coerce").rolling(5).mean()
+                        close = pd.to_numeric(df["close"], errors="coerce")
+                        if len(wr14.dropna()) >= 3:
+                            t, y, dby = -1, -2, -3
+                            def _ok(i_from, i_to):
+                                return (pd.notna(wr14.iloc[i_from]) and pd.notna(wr14.iloc[i_to])
+                                        and pd.notna(close.iloc[i_to]) and pd.notna(ma5.iloc[i_to])
+                                        and (wr14.iloc[i_from] > 80) and (wr14.iloc[i_to] < 80)
+                                        and (close.iloc[i_to] >= ma5.iloc[i_to]))
+                            if _ok(y, t):
+                                ok, day, wrv = True, "today", float(wr14.iloc[t])
+                            elif _ok(dby, y):
+                                ok, day, wrv = True, "yesterday", float(wr14.iloc[y])
+                    sig_ok.append(ok)
+                    sig_day.append(day)
+                    wr_now.append(wrv)
+                a3["wr14_now"] = wr_now
+                a3["signal_day"] = sig_day
+                a4 = a3[pd.Series(sig_ok, index=a3.index)].copy()
+                print(f"A-4 WR14信号：{len(a4)}")
+                if a4.empty:
+                    pool_a = pd.DataFrame()
+                else:
+                    a4["roe"] = [ _roe_latest(c) for c in a4["ts_code"].astype(str).tolist() ]
+                    a4["roe_pass"] = a4["roe"].notna() & (a4["roe"] > 5.0)
+                    a4["pool_type"] = "A-超卖反弹"
+                    pool_a = _apply_ths(a4)
+
+    # ─────────────────────────────────────────────
+    # 版本B：科技成长
+    # ─────────────────────────────────────────────
+    print("\n===== 版本B：科技成长 =====")
+    # B-1：换手 2%-6%（更活跃）
+    b1 = _calc_turnover(universe)
+    b1 = b1[b1["turnover_60d_avg"].notna() & (b1["turnover_60d_avg"] >= 2.0) & (b1["turnover_60d_avg"] <= 6.0)].copy()
+    print(f"B-1 换手 2%-6%：{len(b1)}")
+    if b1.empty:
+        pool_b = pd.DataFrame()
+    else:
+        # B-2：营收增速 > 20%
+        rev_codes = b1["ts_code"].astype(str).tolist()
+        b1["q_rev_yu"] = [ _q_rev_yu(c) for c in rev_codes ]
+        b2 = b1[b1["q_rev_yu"].notna() & (b1["q_rev_yu"] > 20.0)].copy()
+        print(f"B-2 营收增速>20%：{len(b2)}")
+        if b2.empty:
+            pool_b = pd.DataFrame()
+        else:
+            # B-3：布林带收敛（30%分位，同版本A口径）
+            b3 = _bb_filter(b2, quantile=0.30)
+            print(f"B-3 布林带收敛(30%)：{len(b3)}")
+            if b3.empty:
+                pool_b = pd.DataFrame()
+            else:
+                # B-4：量比 > 1.3（近3日相对活跃）
+                codes_b4 = b3["ts_code"].astype(str).tolist()
+                vol_ratio = []
+                for c in codes_b4:
+                    df = fetcher.get_stock_daily(c, (end_dt.date() - timedelta(days=10)).strftime("%Y-%m-%d"), end_date)
+                    if df is None or df.empty or "volume" not in df.columns or len(df) < 4:
+                        vol_ratio.append(np.nan)
+                    else:
+                        v = pd.to_numeric(df["volume"], errors="coerce").dropna()
+                        if len(v) < 4:
+                            vol_ratio.append(np.nan)
+                        else:
+                            vol_ratio.append(float(v.tail(3).mean() / v.tail(20).mean() if v.tail(20).mean() > 0 else np.nan))
+                b3["vol_ratio_3d"] = vol_ratio
+                b4 = b3[b3["vol_ratio_3d"].notna() & (b3["vol_ratio_3d"] >= 1.3)].copy()
+                print(f"B-4 量比>1.3：{len(b4)}")
+                if b4.empty:
+                    pool_b = pd.DataFrame()
+                else:
+                    b4["roe"] = [ _roe_latest(c) for c in b4["ts_code"].astype(str).tolist() ]
+                    b4["roe_pass"] = b4["roe"].notna() & (b4["roe"] > 5.0)
+                    b4["pool_type"] = "B-科技成长"
+                    b4["wr14_now"] = np.nan
+                    b4["signal_day"] = ""
+                    pool_b = _apply_ths(b4)
+
+    # ─────────────────────────────────────────────
+    # 合并双池 + 打分 + 导出
+    # ─────────────────────────────────────────────
+    parts = []
+    if not pool_a.empty:
+        parts.append(pool_a)
+    if not pool_b.empty:
+        parts.append(pool_b)
+    if not parts:
+        print("\n⚠ 双池均为空，输出空结果。")
+        return pd.DataFrame()
+
+    final_df = pd.concat(parts, ignore_index=True)
+    for c in ["bb_width_cur", "bb_width_mean250", "bb_width_ratio"]:
+        if c not in final_df.columns:
+            final_df[c] = np.nan
+
+    final_df = _score_pool(final_df)
+
+    # 输出字段
+    final_df["strategy"] = "量化蓄势突破"
+    final_df["strategy_short"] = "蓄势"
+    final_df["latest_trade_date"] = end_ymd
+    final_df["pe_ttm"] = final_df["ts_code"].map(
+        lambda x: float(daily_basic_today[daily_basic_today["ts_code"] == x]["pe_ttm"].iloc[0])
+        if x in daily_basic_today["ts_code"].values else np.nan
+    )
+    final_df["turnover_rate"] = final_df["ts_code"].map(
+        lambda x: float(daily_basic_today[daily_basic_today["ts_code"] == x]["turnover_rate"].iloc[0])
+        if x in daily_basic_today["ts_code"].values else np.nan
+    )
+
+    out = final_df.sort_values(["pool_type", "score_norm"], ascending=[True, False]).reset_index(drop=True)
+    out = out.head(max(int(top_n), 1))
+
+    out_dir = Path("output/daily")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    tag = str(end_date).replace("-", "")
+    export_suffix = os.getenv("QUANT_EXPORT_SUFFIX", "").strip()
+    file_mid = f"daily_selection_{tag}{export_suffix}"
+    csv_en = out_dir / f"{file_mid}.csv"
+    csv_cn = out_dir / f"{file_mid}_cn.csv"
+    out.to_csv(csv_en, index=False, encoding="utf-8-sig")
+    to_chinese_columns(out.copy()).to_csv(csv_cn, index=False, encoding="utf-8-sig")
+    print(f"\n已导出: {csv_en.resolve()}")
+    print(f"        {csv_cn.resolve()}")
+
+    return out

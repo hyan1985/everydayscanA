@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "afterclose-scan"
+version = "0.2.0"
+description = "盘后扫描追随：基于 Tushare 收盘行情的板块龙头/追随股次日计划生成器"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "tushare>=1.2.89",
+  "pandas>=2.2.0",
+]
+
+[project.scripts]
+afterclose-scan = "afterclose_scan.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

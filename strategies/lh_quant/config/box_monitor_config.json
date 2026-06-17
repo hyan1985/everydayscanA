@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "source": "tushare",
+  "symbols": ["003031.SZ", "603083.SH", "300308.SZ", "601231.SH"],
+  "symbol_name_map": {
+    "003031.SZ": "中瓷电子",
+    "603083.SH": "剑桥科技",
+    "300308.SZ": "中际旭创",
+    "601231.SH": "环旭电子"
+  },
+  "start_date": "2024-01-01",
+  "window": 60,
+  "threshold": 0.02,
+  "trigger_only": false,
+  "run_before_task1": true,
+  "sleep_between_runs_sec": 8
+}
