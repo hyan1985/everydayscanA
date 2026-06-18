@@ -6,6 +6,11 @@ on:
     - cron: "0 10 * * 1-5"
   workflow_dispatch:  # 允许手动触发
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -16,14 +21,13 @@ jobs:
     timeout-minutes: 45
     outputs:
       pages_ready: ${{ steps.pages.outputs.ready }}
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -35,9 +39,9 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run all strategies + aggregate
+        id: pipeline
         env:
           TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
-          # 量化蓄势突破超时后的额外等待秒数（默认 600，可加大）
           LH_QUANT_HEAL_WAIT: "600"
         run: bash run_all.sh
 
@@ -51,25 +55,15 @@ jobs:
             output/unified_wechat.txt
             output/unified_all_picks.csv
             output/.run_status.json
+          if-no-files-found: warn
           retention-days: 30
 
-      - name: Commit daily output back to repo
-        if: always()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/ strategies/lh_quant/output/daily/
-          git diff --cached --quiet || (
-            git commit -m "daily: auto update $(date +%F)" &&
-            git push
-          )
-
       - name: Prepare GitHub Pages site
-        if: always()
+        if: always() && steps.pipeline.outcome != 'cancelled'
         id: pages
         run: |
           if [ ! -f output/unified_dashboard.html ]; then
-            echo "No dashboard to publish, skip Pages upload."
+            echo "::warning::看板文件不存在，跳过 Pages 发布"
             echo "ready=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -80,9 +74,16 @@ jobs:
           cp output/unified_all_picks.csv _site/ 2>/dev/null || true
           cp output/.run_status.json _site/ 2>/dev/null || true
           if [ ! -f _site/index.html ]; then
-            echo '<!DOCTYPE html><meta http-equiv="refresh" content="0;url=unified_dashboard.html">' > _site/index.html
+            printf '%s\n' \
+              '<!DOCTYPE html>' \
+              '<meta charset="UTF-8">' \
+              '<meta http-equiv="refresh" content="0;url=unified_dashboard.html">' \
+              '<title>统一选股看板</title>' \
+              '<a href="unified_dashboard.html">统一选股看板</a>' \
+              > _site/index.html
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
+          echo "Pages site prepared with $(wc -c < _site/unified_dashboard.html) bytes dashboard"
 
       - name: Setup Pages
         if: steps.pages.outputs.ready == 'true'
@@ -94,16 +95,31 @@ jobs:
         with:
           path: _site
 
+      - name: Commit daily output back to repo
+        if: always() && steps.pipeline.outcome == 'success'
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/
+          if [ -d strategies/lh_quant/output/daily ]; then
+            git add strategies/lh_quant/output/daily/
+          fi
+          if git diff --cached --quiet; then
+            echo "No output changes to commit."
+            exit 0
+          fi
+          git commit -m "daily: auto update $(date -u +%F)"
+          git pull --rebase origin main
+          git push origin main
+
   deploy-pages:
-    if: needs.run-strategies.outputs.pages_ready == 'true'
     needs: run-strategies
+    if: needs.run-strategies.outputs.pages_ready == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    permissions:
-      pages: write
-      id-token: write
 
     steps:
       - name: Deploy to GitHub Pages
