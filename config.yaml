@@ -58,34 +58,6 @@ strategies:
       - { src: "安全", label: "安全" }
       - { src: "tag",  label: "标签" }
 
-  - name: "量化蓄势突破"
-    short: "蓄势"
-    workspace: "%SCRIPT_DIR%/strategies/lh_quant"
-    csv_glob: "output/daily/daily_selection_*_cn.csv"
-    fields:
-      ts_code: "股票代码"
-      name: "股票名称"
-      score: "score_norm"
-      industry: "行业"
-      concept: "概念"
-    score_range: [0, 100]
-    extra_cols:
-      - { src: "pool_type",       label: "池" }
-      - { src: "pe_ttm",            label: "PE_TTM" }
-      - { src: "roe",              label: "ROE(%)" }
-      - { src: "roe_pass",         label: "ROE>5%" }
-      - { src: "q_rev_yu",         label: "营收增速(%)" }
-      - { src: "vol_ratio_3d",     label: "3日量比" }
-      - { src: "turnover_60d_avg", label: "60日换手均值(%)" }
-      - { src: "bb_width_ratio",   label: "带宽比(收敛)" }
-      - { src: "ma_cross",         label: "均线" }
-      - { src: "tech_combo",       label: "技术结构" }
-      - { src: "tech_adj",         label: "技术加减" }
-      - { src: "macd_disp_ratio",  label: "MACD发散比" }
-      - { src: "signal_day",       label: "异动日" }
-      - { src: "wr14_now",         label: "WR14" }
-      - { src: "ths_concept1",     label: "同花顺概念1" }
-
   - name: "存储IPO供应链"
     short: "存储"
     workspace: "%SCRIPT_DIR%/strategies/lh_quant"

@@ -1303,7 +1303,6 @@ STRATEGY_COLORS = {
     "擒龙猎手": "#f59e0b",
     "主升行情启动": "#ef4444",
     "盘后扫描追随": "#3b82f6",
-    "量化蓄势突破": "#10b981",
     "存储IPO供应链": "#8b5cf6",
 }
 
@@ -1416,7 +1415,6 @@ def _render_strategy_picks_table(sdf: pd.DataFrame, sname: str) -> str:
         return '<p style="color:#94a3b8">暂无推荐标的</p>'
 
     is_storage = sname == "存储IPO供应链"
-    is_lh = sname == "量化蓄势突破"
     base_cols = ["ts_code", "name", "score_raw", "score_norm"]
     if is_storage:
         base_cols = ["ts_code", "name"]
@@ -1445,12 +1443,6 @@ def _render_strategy_picks_table(sdf: pd.DataFrame, sname: str) -> str:
     row_limit = DISPLAY_LIMITS.get(sname, 20)
     display_sdf = sdf
 
-    # 池名缩写
-    _POOL_ABBR = {"A-超卖反弹": "A-超卖", "B-科技成长": "B-科技"}
-
-    # 量化蓄势突破：字号更小，列更拥挤
-    cell_style = ' style="font-size:12px;padding:4px 5px"' if is_lh else ""
-
     if is_storage and "档位" in sdf.columns:
         tier_order = {"可做": 0, "观察": 1}
         display_sdf = sdf.copy()
@@ -1466,27 +1458,21 @@ def _render_strategy_picks_table(sdf: pd.DataFrame, sname: str) -> str:
                 cells += f"<td>{_tier_badge(str(val))}</td>"
             elif c == "score_norm":
                 sc = _score_color(float(val) if pd.notna(val) else 0)
-                cells += f'<td style="text-align:center;color:{sc};font-weight:700"{cell_style}>{val}</td>'
+                cells += f'<td style="text-align:center;color:{sc};font-weight:700">{val}</td>'
             elif c == "ts_code":
-                cells += f'<td style="color:#b45309;font-weight:600"{cell_style}>{val}</td>'
+                cells += f'<td style="color:#b45309;font-weight:600">{val}</td>'
             elif c == "concept":
                 raw = str(val) if pd.notna(val) else ""
                 short = raw[:20] + "…" if len(raw) > 20 else raw
-                cells += f'<td title="{raw}" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap{";font-size:12px;padding:4px 5px" if is_lh else ""}">{short}</td>'
+                cells += f'<td title="{raw}" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{short}</td>'
             else:
                 display = val if pd.notna(val) else ""
-                # 量化蓄势突破池名缩写
-                if is_lh and c == "池":
-                    display = _POOL_ABBR.get(str(display), str(display))
                 if isinstance(display, float):
                     display = f"{display:.2f}" if abs(display) < 1000 else f"{display:.0f}"
-                cells += f"<td{cell_style}>{display}</td>"
+                cells += f"<td>{display}</td>"
         tbody += f"<tr>{cells}</tr>"
 
-    table_html = f"<table><thead><tr>{thead}</tr></thead><tbody>{tbody}</tbody></table>"
-    if is_lh:
-        table_html = f'<div style="font-size:12px;overflow-x:auto">{table_html}</div>'
-    return table_html
+    return f"<table><thead><tr>{thead}</tr></thead><tbody>{tbody}</tbody></table>"
 
 
 def _data_date_subtitle(market_meta: dict) -> str:
@@ -1725,7 +1711,7 @@ tr:hover {{ background:#f8fafc; }}
 <body>
 <div class="container">
   <h1>统一选股看板</h1>
-  <p class="subtitle">{today} &nbsp;|&nbsp; 五策略聚合 &middot; 自动生成{_data_date_subtitle(market_meta)}</p>
+  <p class="subtitle">{today} &nbsp;|&nbsp; 四策略聚合 &middot; 自动生成{_data_date_subtitle(market_meta)}</p>
 
   <div class="stats">
     <div class="stat-card">
@@ -1761,7 +1747,7 @@ tr:hover {{ background:#f8fafc; }}
   {_render_weak_strategies_html(oversold_candidates, defensive_stocks)}
 
   <div class="footer">
-    数据来源：擒龙猎手 / 主升行情启动 / 盘后扫描追随 / 量化蓄势突破 / 存储IPO供应链<br>
+    数据来源：擒龙猎手 / 主升行情启动 / 盘后扫描追随 / 存储IPO供应链<br>
     仅为量化模型推演，不构成交易建议，入市有风险，投资需谨慎。
   </div>
 </div>
@@ -1796,7 +1782,7 @@ def render_wechat(all_df: pd.DataFrame, resonance: pd.DataFrame, strategy_dfs: d
     else:
         date_line = f"📅 日期：{today}"
     lines = [
-        f"📊 【五策略统一选股报告】",
+        f"📊 【四策略统一选股报告】",
         date_line,
     ]
 

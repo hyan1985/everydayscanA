@@ -1,4 +1,4 @@
-# everydayscanA - 多策略每日选股
+# everydayscanA - 四策略每日选股（擒龙 / 主升 / 追随 / 存储IPO）
 
 ## 在线看板
 

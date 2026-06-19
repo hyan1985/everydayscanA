@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────
-#  五策略顺序执行 + Parquet 预拉取 + 统一聚合
+#  四策略顺序执行 + Parquet 预拉取 + 统一聚合
 #  所有策略代码已整合到 strategies/ 目录统一管理
 #  原项目保留在 ~/Desktop/ 下作为只读备份
 # ─────────────────────────────────────────────────────────
@@ -23,7 +23,6 @@ TASK_INTERVAL="${TASK_INTERVAL:-10}"
 TIMEOUT_QL_DRAGON="${TIMEOUT_QL_DRAGON:-180}"
 TIMEOUT_ZHUSH="${TIMEOUT_ZHUSH:-150}"
 TIMEOUT_PH_AFTERCLOSE="${TIMEOUT_PH_AFTERCLOSE:-180}"
-TIMEOUT_LH_QUANT="${TIMEOUT_LH_QUANT:-900}"
 TIMEOUT_STORAGE_IPO="${TIMEOUT_STORAGE_IPO:-120}"
 
 # macOS 兼容: 没有 timeout 命令则用 perl 替代
@@ -106,7 +105,7 @@ export QUANT_DATA_DIR="${SCRIPT_DIR}"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-log "开始 预拉取 + 五策略 执行（间隔 ${TASK_INTERVAL}s + Parquet 缓存）"
+log "开始 预拉取 + 四策略 执行（间隔 ${TASK_INTERVAL}s + Parquet 缓存）"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # ── 步骤 0: 预拉取 ──────────────────────────────────────
@@ -150,7 +149,7 @@ done
 log "概念同步: ${SYNC_OK} 成功, ${SYNC_FAIL} 失败"
 
 PASS=0
-TOTAL=5
+TOTAL=4
 FAILED_TASKS=()
 
 # ── 任务 1: 擒龙猎手 ────────────────────────────────────
@@ -213,28 +212,9 @@ fi
 log "等待 ${TASK_INTERVAL}s 再执行下一策略..."
 sleep "$TASK_INTERVAL"
 
-# ── 任务 4: 量化蓄势突破 ────────────────────────────────
+# ── 任务 4: 存储 IPO 供应链 ──────────────────────────────
 echo ""
-log "[4/${TOTAL}] 量化蓄势突破 — 蓄势突破选股（${TIMEOUT_LH_QUANT}s 超时）"
-SETUP_EXIT=0
-cd "$STRATEGIES_DIR/lh_quant" && timeout "$TIMEOUT_LH_QUANT" bash scripts/run_daily.sh || SETUP_EXIT=$?
-if [[ $SETUP_EXIT -eq 0 ]]; then
-  ok "量化蓄势突破 完成"
-  PASS=$((PASS+1))
-elif [[ $SETUP_EXIT -eq 124 || $SETUP_EXIT -eq 142 ]]; then
-  warn "量化蓄势突破 超时（${TIMEOUT_LH_QUANT}s），跳过继续"
-  FAILED_TASKS+=("量化蓄势突破(超时)")
-else
-  fail "量化蓄势突破 执行失败（退出码 $SETUP_EXIT）"
-  FAILED_TASKS+=("量化蓄势突破")
-fi
-
-log "等待 ${TASK_INTERVAL}s 再执行下一策略..."
-sleep "$TASK_INTERVAL"
-
-# ── 任务 5: 存储 IPO 供应链 ──────────────────────────────
-echo ""
-log "[5/${TOTAL}] 存储IPO供应链 — 长鑫/长存可上车扫描（${TIMEOUT_STORAGE_IPO}s 超时）"
+log "[4/${TOTAL}] 存储IPO供应链 — 长鑫/长存可上车扫描（${TIMEOUT_STORAGE_IPO}s 超时）"
 EXIT_CODE=0
 cd "$STRATEGIES_DIR/lh_quant" && timeout "$TIMEOUT_STORAGE_IPO" python3 storage_ipo_scan.py
 EXIT_CODE=$?
@@ -247,34 +227,6 @@ elif [[ $EXIT_CODE -eq 124 || $EXIT_CODE -eq 142 ]]; then
 else
   fail "存储IPO供应链 执行失败（退出码 $EXIT_CODE）"
   FAILED_TASKS+=("存储IPO供应链")
-fi
-
-# ── 新鲜度自愈：若量化蓄势突破超时但后台进程仍在产出今日 CSV，轮询等待 ──
-if [[ " ${FAILED_TASKS[*]} " =~ "量化蓄势突破" ]]; then
-  TODAY_STR="$(date +%F)"
-  LH_CSV="${STRATEGIES_DIR}/lh_quant/output/daily/daily_selection_${TODAY_STR}.csv"
-  LH_WAIT_MAX="${LH_QUANT_HEAL_WAIT:-600}"
-  echo ""
-  log "[自愈] 量化蓄势突破超时，等待后台进程生成今日 CSV（最多${LH_WAIT_MAX}s）…"
-  HEALED=0
-  for ((_i=0; _i<LH_WAIT_MAX; _i+=10)); do
-    if [[ -f "$LH_CSV" ]]; then
-      HEALED=1; break
-    fi
-    sleep 10
-  done
-  if [[ $HEALED -eq 1 ]]; then
-    ok "[自愈] 量化蓄势突破 今日 CSV 已生成 ✓"
-    # 从失败列表中移除 量化蓄势突破(超时)，恢复 PASS 计数
-    NEW_FAILED=()
-    for _t in "${FAILED_TASKS[@]}"; do
-      [[ "$_t" != 量化蓄势突破* ]] && NEW_FAILED+=("$_t")
-    done
-    FAILED_TASKS=("${NEW_FAILED[@]}")
-    PASS=$((PASS+1))
-  else
-    warn "[自愈] ${LH_WAIT_MAX}s 后仍未生成今日 CSV，聚合将沿用旧数据"
-  fi
 fi
 
 # ── 运行状态落盘（供聚合器在看板上显式标注本次失败/超时的策略）──

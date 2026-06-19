@@ -50,12 +50,9 @@ jobs:
         id: pipeline
         env:
           TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
-          # CI 无本地缓存，超时需比本机更长
-          LH_QUANT_HEAL_WAIT: "900"
           TIMEOUT_QL_DRAGON: "360"
           TIMEOUT_ZHUSH: "360"
           TIMEOUT_PH_AFTERCLOSE: "360"
-          TIMEOUT_LH_QUANT: "1800"
           TIMEOUT_STORAGE_IPO: "240"
           TASK_INTERVAL: "5"
         run: bash run_all.sh
