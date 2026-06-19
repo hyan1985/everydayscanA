@@ -18,7 +18,7 @@ concurrency:
 jobs:
   run-strategies:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     outputs:
       pages_ready: ${{ steps.pages.outputs.ready }}
 
@@ -35,6 +35,14 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      - name: Restore Tushare parquet cache
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: tushare-parquet-${{ github.run_id }}
+          restore-keys: |
+            tushare-parquet-
+
       - name: Install dependencies
         run: pip install -r requirements.txt
 
@@ -42,7 +50,14 @@ jobs:
         id: pipeline
         env:
           TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
-          LH_QUANT_HEAL_WAIT: "600"
+          # CI 无本地缓存，超时需比本机更长
+          LH_QUANT_HEAL_WAIT: "900"
+          TIMEOUT_QL_DRAGON: "360"
+          TIMEOUT_ZHUSH: "360"
+          TIMEOUT_PH_AFTERCLOSE: "360"
+          TIMEOUT_LH_QUANT: "1800"
+          TIMEOUT_STORAGE_IPO: "240"
+          TASK_INTERVAL: "5"
         run: bash run_all.sh
 
       - name: Upload dashboard artifact

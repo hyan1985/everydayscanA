@@ -19,6 +19,13 @@ NC='\033[0m'
 
 TASK_INTERVAL="${TASK_INTERVAL:-10}"
 
+# 各策略超时（秒），CI 可通过环境变量加大
+TIMEOUT_QL_DRAGON="${TIMEOUT_QL_DRAGON:-180}"
+TIMEOUT_ZHUSH="${TIMEOUT_ZHUSH:-150}"
+TIMEOUT_PH_AFTERCLOSE="${TIMEOUT_PH_AFTERCLOSE:-180}"
+TIMEOUT_LH_QUANT="${TIMEOUT_LH_QUANT:-900}"
+TIMEOUT_STORAGE_IPO="${TIMEOUT_STORAGE_IPO:-120}"
+
 # macOS 兼容: 没有 timeout 命令则用 perl 替代
 if ! command -v timeout &>/dev/null; then
   timeout() {
@@ -148,15 +155,15 @@ FAILED_TASKS=()
 
 # ── 任务 1: 擒龙猎手 ────────────────────────────────────
 echo ""
-log "[1/${TOTAL}] 擒龙猎手 — 造龙结构多因子扫描（180s 超时）"
+log "[1/${TOTAL}] 擒龙猎手 — 造龙结构多因子扫描（${TIMEOUT_QL_DRAGON}s 超时）"
 EXIT_CODE=0
-cd "$STRATEGIES_DIR/ql_dragon" && timeout 180 python3 scripts/scan_dragons.py --skip-fina --skip-chip --max-analyze 30
+cd "$STRATEGIES_DIR/ql_dragon" && timeout "$TIMEOUT_QL_DRAGON" python3 scripts/scan_dragons.py --skip-fina --skip-chip --max-analyze 30
 EXIT_CODE=$?
 if [[ $EXIT_CODE -eq 0 ]]; then
   ok "擒龙猎手 完成"
   PASS=$((PASS+1))
 elif [[ $EXIT_CODE -eq 124 || $EXIT_CODE -eq 142 ]]; then
-  warn "擒龙猎手 超时（180s），跳过继续"
+  warn "擒龙猎手 超时（${TIMEOUT_QL_DRAGON}s），跳过继续"
   FAILED_TASKS+=("擒龙猎手(超时)")
 else
   fail "擒龙猎手 执行失败（退出码 $EXIT_CODE）"
@@ -168,15 +175,15 @@ sleep "$TASK_INTERVAL"
 
 # ── 任务 2: 主升行情启动 ────────────────────────────────
 echo ""
-log "[2/${TOTAL}] 主升行情启动 — 十五五主升浪扫描（150s 超时）"
+log "[2/${TOTAL}] 主升行情启动 — 十五五主升浪扫描（${TIMEOUT_ZHUSH}s 超时）"
 EXIT_CODE=0
-cd "$STRATEGIES_DIR/zhush_mainrise" && timeout 150 python3 main.py
+cd "$STRATEGIES_DIR/zhush_mainrise" && timeout "$TIMEOUT_ZHUSH" python3 main.py
 EXIT_CODE=$?
 if [[ $EXIT_CODE -eq 0 ]]; then
   ok "主升行情启动 完成"
   PASS=$((PASS+1))
 elif [[ $EXIT_CODE -eq 124 || $EXIT_CODE -eq 142 ]]; then
-  warn "主升行情启动 超时（150s），跳过继续"
+  warn "主升行情启动 超时（${TIMEOUT_ZHUSH}s），跳过继续"
   FAILED_TASKS+=("主升行情启动(超时)")
 else
   fail "主升行情启动 执行失败（退出码 $EXIT_CODE）"
@@ -188,15 +195,15 @@ sleep "$TASK_INTERVAL"
 
 # ── 任务 3: 盘后扫描追随 ────────────────────────────────
 echo ""
-log "[3/${TOTAL}] 盘后扫描追随 — 龙头跟随扫描（180s 超时）"
+log "[3/${TOTAL}] 盘后扫描追随 — 龙头跟随扫描（${TIMEOUT_PH_AFTERCLOSE}s 超时）"
 EXIT_CODE=0
-cd "$STRATEGIES_DIR/ph_afterclose" && timeout 180 bash run.sh
+cd "$STRATEGIES_DIR/ph_afterclose" && timeout "$TIMEOUT_PH_AFTERCLOSE" bash run.sh
 EXIT_CODE=$?
 if [[ $EXIT_CODE -eq 0 ]]; then
   ok "盘后扫描追随 完成"
   PASS=$((PASS+1))
 elif [[ $EXIT_CODE -eq 124 || $EXIT_CODE -eq 142 ]]; then
-  warn "盘后扫描追随 超时（180s），跳过继续"
+  warn "盘后扫描追随 超时（${TIMEOUT_PH_AFTERCLOSE}s），跳过继续"
   FAILED_TASKS+=("盘后扫描追随(超时)")
 else
   fail "盘后扫描追随 执行失败（退出码 $EXIT_CODE）"
@@ -208,14 +215,14 @@ sleep "$TASK_INTERVAL"
 
 # ── 任务 4: 量化蓄势突破 ────────────────────────────────
 echo ""
-log "[4/${TOTAL}] 量化蓄势突破 — 蓄势突破选股（900s 超时）"
+log "[4/${TOTAL}] 量化蓄势突破 — 蓄势突破选股（${TIMEOUT_LH_QUANT}s 超时）"
 SETUP_EXIT=0
-cd "$STRATEGIES_DIR/lh_quant" && timeout 900 bash scripts/run_daily.sh || SETUP_EXIT=$?
+cd "$STRATEGIES_DIR/lh_quant" && timeout "$TIMEOUT_LH_QUANT" bash scripts/run_daily.sh || SETUP_EXIT=$?
 if [[ $SETUP_EXIT -eq 0 ]]; then
   ok "量化蓄势突破 完成"
   PASS=$((PASS+1))
 elif [[ $SETUP_EXIT -eq 124 || $SETUP_EXIT -eq 142 ]]; then
-  warn "量化蓄势突破 超时（900s），跳过继续"
+  warn "量化蓄势突破 超时（${TIMEOUT_LH_QUANT}s），跳过继续"
   FAILED_TASKS+=("量化蓄势突破(超时)")
 else
   fail "量化蓄势突破 执行失败（退出码 $SETUP_EXIT）"
@@ -227,15 +234,15 @@ sleep "$TASK_INTERVAL"
 
 # ── 任务 5: 存储 IPO 供应链 ──────────────────────────────
 echo ""
-log "[5/${TOTAL}] 存储IPO供应链 — 长鑫/长存可上车扫描（120s 超时）"
+log "[5/${TOTAL}] 存储IPO供应链 — 长鑫/长存可上车扫描（${TIMEOUT_STORAGE_IPO}s 超时）"
 EXIT_CODE=0
-cd "$STRATEGIES_DIR/lh_quant" && timeout 120 python3 storage_ipo_scan.py
+cd "$STRATEGIES_DIR/lh_quant" && timeout "$TIMEOUT_STORAGE_IPO" python3 storage_ipo_scan.py
 EXIT_CODE=$?
 if [[ $EXIT_CODE -eq 0 ]]; then
   ok "存储IPO供应链 完成"
   PASS=$((PASS+1))
 elif [[ $EXIT_CODE -eq 124 || $EXIT_CODE -eq 142 ]]; then
-  warn "存储IPO供应链 超时（120s），跳过继续"
+  warn "存储IPO供应链 超时（${TIMEOUT_STORAGE_IPO}s），跳过继续"
   FAILED_TASKS+=("存储IPO供应链(超时)")
 else
   fail "存储IPO供应链 执行失败（退出码 $EXIT_CODE）"

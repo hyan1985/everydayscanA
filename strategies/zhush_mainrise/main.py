@@ -1,4 +1,5 @@
 import os
+import sys
 import datetime
 import pandas as pd
 from data_fetcher import DataFetcher
@@ -83,14 +84,14 @@ def main():
             "或在「钥匙串访问」中新增通用密码："
             "服务名（钥匙串条目名）cursor-quant-tushare、账号 default，密码填 token。"
         )
-        return
+        sys.exit(1)
     fetcher = DataFetcher(token)
     
     # 1. 获取十五五概念板块股票池
     theme_df = fetcher.get_theme_pool()
     if theme_df.empty:
         print("未能获取到十五五概念股票，请检查 themes.json 配置或 Tushare 权限。")
-        return
+        sys.exit(1)
         
     # 2. 获取基础信息，并与主题池合并
     df_basic = fetcher.get_stock_basic(theme_df)
