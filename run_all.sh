@@ -102,6 +102,7 @@ export NO_PROXY="*"
 unset TUSHARE_CACHE_DB
 export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH:-}"
 export QUANT_DATA_DIR="${SCRIPT_DIR}"
+export TZ="${TZ:-Asia/Shanghai}"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -50,6 +50,7 @@ jobs:
         id: pipeline
         env:
           TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+          TZ: Asia/Shanghai
           TIMEOUT_QL_DRAGON: "360"
           TIMEOUT_ZHUSH: "360"
           TIMEOUT_PH_AFTERCLOSE: "360"

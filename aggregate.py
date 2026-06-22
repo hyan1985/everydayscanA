@@ -14,6 +14,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import yaml
@@ -22,6 +23,16 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = SCRIPT_DIR / "config.yaml"
 OUTPUT_DIR = SCRIPT_DIR / "output"
 DATA_DIR = SCRIPT_DIR / "data"
+CST = ZoneInfo("Asia/Shanghai")
+
+
+def _now_cst() -> datetime:
+    """看板展示用北京时间（GitHub Actions 跑在 UTC，避免显示成 UTC）。"""
+    return datetime.now(CST)
+
+
+def _fmt_cst(fmt: str = "%Y-%m-%d %H:%M") -> str:
+    return _now_cst().strftime(fmt)
 
 
 # ── 0. 市场环境检测 ─────────────────────────────────────────
@@ -1489,7 +1500,7 @@ def _data_date_subtitle(market_meta: dict) -> str:
 
 
 def render_html(all_df: pd.DataFrame, resonance: pd.DataFrame, strategy_dfs: dict, market_meta: dict = None, market_condition: Optional[MarketCondition] = None, oversold_candidates: list = None, defensive_stocks: list = None) -> str:
-    today = datetime.now().strftime("%Y-%m-%d %H:%M")
+    today = _fmt_cst()
     market_meta = market_meta or {}
 
     total_stocks = all_df["ts_code"].nunique() if not all_df.empty else 0
@@ -1711,7 +1722,7 @@ tr:hover {{ background:#f8fafc; }}
 <body>
 <div class="container">
   <h1>统一选股看板</h1>
-  <p class="subtitle">{today} &nbsp;|&nbsp; 四策略聚合 &middot; 自动生成{_data_date_subtitle(market_meta)}</p>
+  <p class="subtitle">{today} 北京时间 &nbsp;|&nbsp; 四策略聚合 &middot; 自动生成{_data_date_subtitle(market_meta)}</p>
 
   <div class="stats">
     <div class="stat-card">
@@ -1769,7 +1780,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {{
 # ── 5. 微信转发文本渲染 ──────────────────────────────────────
 
 def render_wechat(all_df: pd.DataFrame, resonance: pd.DataFrame, strategy_dfs: dict, market_meta: dict = None, market_condition: Optional[MarketCondition] = None, oversold_candidates: list = None, defensive_stocks: list = None) -> str:
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = _fmt_cst("%Y-%m-%d")
     market_meta = market_meta or {}
     data_td = str(market_meta.get("data_trade_date", "") or market_meta.get("trade_date", "")).strip()
     strat_td = str(market_meta.get("strategy_trade_date", "")).strip()
