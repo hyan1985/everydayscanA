@@ -2,8 +2,8 @@ name: 每日选股流水线
 
 on:
   schedule:
-    # 北京时间 18:00 (UTC+8) = UTC 10:00，周一到周五
-    - cron: "0 10 * * 1-5"
+    # 北京时间 20:00 (UTC+8) = UTC 12:00；周一到周五触发，节假日由交易日检查跳过
+    - cron: "5 12 * * 1-5"
   workflow_dispatch:  # 允许手动触发
 
 permissions:
@@ -46,7 +46,54 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Check A-share trading day
+        if: github.event_name == 'schedule'
+        id: trading_day
+        env:
+          TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+        run: |
+          python3 <<'PY'
+          import os
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          import tushare as ts
+
+          today = datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y%m%d")
+          pro = ts.pro_api(os.environ["TUSHARE_TOKEN"])
+          cal = pro.trade_cal(
+              exchange="SSE",
+              start_date=today,
+              end_date=today,
+              fields="cal_date,is_open",
+          )
+          is_open = (
+              cal is not None
+              and not cal.empty
+              and int(cal.iloc[0]["is_open"]) == 1
+          )
+          print(f"北京时间日期 {today}，是否交易日: {is_open}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"is_trading_day={'true' if is_open else 'false'}\n")
+          PY
+
+      - name: Resolve run gate
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "手动触发，执行流水线"
+            exit 0
+          fi
+          if [ "${{ steps.trading_day.outputs.is_trading_day }}" = "true" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "交易日，执行流水线"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "非 A 股交易日，跳过本次定时任务"
+          fi
+
       - name: Run all strategies + aggregate
+        if: steps.gate.outputs.run == 'true'
         id: pipeline
         env:
           TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
@@ -59,7 +106,7 @@ jobs:
         run: bash run_all.sh
 
       - name: Upload dashboard artifact
-        if: always()
+        if: steps.gate.outputs.run == 'true' && always() && steps.pipeline.outcome != 'skipped'
         uses: actions/upload-artifact@v4
         with:
           name: unified-output-${{ github.run_id }}
@@ -72,7 +119,7 @@ jobs:
           retention-days: 30
 
       - name: Prepare GitHub Pages site
-        if: always() && steps.pipeline.outcome != 'cancelled'
+        if: steps.gate.outputs.run == 'true' && always() && steps.pipeline.outcome != 'cancelled' && steps.pipeline.outcome != 'skipped'
         id: pages
         run: |
           if [ ! -f output/unified_dashboard.html ]; then
@@ -109,7 +156,7 @@ jobs:
           path: _site
 
       - name: Commit daily output back to repo
-        if: always() && steps.pipeline.outcome == 'success'
+        if: steps.gate.outputs.run == 'true' && steps.pipeline.outcome == 'success'
         continue-on-error: true
         run: |
           git config user.name "github-actions[bot]"

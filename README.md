@@ -82,7 +82,7 @@ bash run_all.sh --clear-cache
 
 工作流：`.github/workflows/daily-run.yml`
 
-- **定时**：工作日北京时间 18:00 自动执行
+- **定时**：工作日北京时间 **20:00** 自动执行（法定节假日自动跳过）
 - **手动**：Actions →「每日选股流水线」→ Run workflow
 - **产物**：更新 `output/` 并部署 GitHub Pages
 
