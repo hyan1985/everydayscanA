@@ -2,8 +2,8 @@ name: 每日选股流水线
 
 on:
   schedule:
-    # 北京时间 20:00 (UTC+8) = UTC 12:00，周一到周五
-    - cron: "0 12 * * 1-5"
+    # 北京时间 20:05 (UTC+8) = UTC 12:05，周一到周五（错开整点排队）
+    - cron: "5 12 * * 1-5"
   workflow_dispatch:  # 允许手动触发
 
 permissions:
