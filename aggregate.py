@@ -1913,7 +1913,10 @@ def main():
         print(f"\n▸ 解析: {s['name']} ...")
         df = parse_strategy(s, market_condition)
         if df.empty:
-            print(f"  ⚠ 无数据")
+            print(f"  ⚠ 无数据（看板中保留 tab，显示\"暂无推荐标的\"）")
+            strategy_dfs[s["name"]] = df
+            if "_original_html" in s:
+                strategy_dfs[s["name"] + "__html"] = s["_original_html"]
             continue
         df = df.sort_values("score_norm", ascending=False).reset_index(drop=True)
         print(f"  ✓ 读取到 {len(df)} 只标的，最高分 {df['score_norm'].max():.1f}")
