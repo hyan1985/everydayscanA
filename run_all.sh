@@ -235,7 +235,7 @@ fi
 echo ""
 log "[5/${TOTAL}] 笔记哥选股 — 六模式级联筛选（${TIMEOUT_BIJIGE}s 超时，本地 Parquet 数据）"
 EXIT_CODE=0
-cd "$STRATEGIES_DIR/bijige" && bash run.sh
+cd "$STRATEGIES_DIR/bijige" && timeout "$TIMEOUT_BIJIGE" bash run.sh
 EXIT_CODE=$?
 if [[ $EXIT_CODE -eq 0 ]]; then
   ok "笔记哥选股 完成"

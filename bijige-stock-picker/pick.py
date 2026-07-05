@@ -431,7 +431,7 @@ def _write_empty_csv(path: str):
     os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8-sig") as _f:
         _w = _csv.writer(_f)
-        _w.writerow(["ts_code", "name", "gain", "vol_ratio", "tags", "score"])
+        _w.writerow(["ts_code", "name", "gain", "vol_ratio", "tags"])
     print(f"[CSV] 空结果已保存 → {path}")
 
 
@@ -554,7 +554,7 @@ def main():
         os.makedirs(os.path.dirname(os.path.abspath(args.output_csv)) or ".", exist_ok=True)
         with open(args.output_csv, "w", newline="", encoding="utf-8-sig") as _f:
             _w = _csv.writer(_f)
-            _w.writerow(["ts_code", "name", "gain", "vol_ratio", "tags", "score"])
+            _w.writerow(["ts_code", "name", "gain", "vol_ratio", "tags"])
             for c in final:
                 _w.writerow([
                     _add_exchange_suffix(c["code"]),
@@ -562,7 +562,6 @@ def main():
                     round(c["gain"] * 100, 2),
                     round(c["vol_ratio"], 2),
                     " | ".join(c["tags"]),
-                    round(c["gain"] * c["vol_ratio"], 4),
                 ])
         print(f"\n[CSV] 已保存 → {args.output_csv} ({len(final)} 只)")
 

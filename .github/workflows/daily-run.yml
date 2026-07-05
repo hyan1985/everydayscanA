@@ -55,6 +55,7 @@ jobs:
           TIMEOUT_ZHUSH: "360"
           TIMEOUT_PH_AFTERCLOSE: "360"
           TIMEOUT_STORAGE_IPO: "240"
+          TIMEOUT_BIJIGE: "120"
           TASK_INTERVAL: "5"
         run: bash run_all.sh
 

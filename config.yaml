@@ -97,6 +97,6 @@ strategies:
       concept: "tags"
     score_range: [0, 30]
     extra_cols:
-      - { src: "gain", label: "涨幅(%)" }
+      - { src: "score", label: "涨幅(%)" }
       - { src: "vol_ratio", label: "量比" }
-      - { src: "tags", label: "匹配模式" }
+      - { src: "concept", label: "匹配模式" }
