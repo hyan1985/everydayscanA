@@ -115,6 +115,19 @@ def _build_parquet_daily_cache(data_dir: str, days: int = 90) -> dict[str, pd.Da
     return cache
 
 
+def _latest_parquet_trade_date(data_dir: str) -> str:
+    """获取 daily/ 分区中最近一个交易日日期（YYYYMMDD）。"""
+    daily_dir = os.path.join(data_dir, "daily")
+    if not os.path.isdir(daily_dir):
+        return ""
+    dates = sorted(
+        f.replace(".parquet", "")
+        for f in os.listdir(daily_dir)
+        if f.endswith(".parquet") and len(f.replace(".parquet", "")) == 8
+    )
+    return dates[-1] if dates else ""
+
+
 def _get_kline_parquet(code: str, daily_cache: dict) -> pd.DataFrame:
     """从本地 Parquet 缓存获取单只股票 K 线（带交易所后缀匹配）。"""
     for suffix in (".SH", ".SZ", ""):
@@ -427,7 +440,7 @@ def _write_empty_csv(path: str):
     os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8-sig") as _f:
         _w = _csv.writer(_f)
-        _w.writerow(["ts_code", "name", "gain", "vol_ratio", "tags"])
+        _w.writerow(["ts_code", "name", "gain", "vol_ratio", "tags", "trade_date"])
     print(f"[CSV] 空结果已保存 → {path}")
 
 
@@ -461,6 +474,9 @@ def main():
         daily_cache = _build_parquet_daily_cache(args.data_dir, days=90)
         # ── 大盘指数 ──
         idx_df = _get_index_kline_parquet(args.data_dir)
+        # ── 交易日 ──
+        trade_date = _latest_parquet_trade_date(args.data_dir)
+        print(f"  数据最新交易日: {trade_date}")
     elif _HAS_MOOTDX:
         print("数据源: mootdx (通达信)")
         stock_list = _get_stock_list_mootdx()
@@ -550,7 +566,7 @@ def main():
         os.makedirs(os.path.dirname(os.path.abspath(args.output_csv)) or ".", exist_ok=True)
         with open(args.output_csv, "w", newline="", encoding="utf-8-sig") as _f:
             _w = _csv.writer(_f)
-            _w.writerow(["ts_code", "name", "gain", "vol_ratio", "tags"])
+            _w.writerow(["ts_code", "name", "gain", "vol_ratio", "tags", "trade_date"])
             for c in final:
                 _w.writerow([
                     _add_exchange_suffix(c["code"]),
@@ -558,6 +574,7 @@ def main():
                     round(c["gain"] * 100, 2),
                     round(c["vol_ratio"], 2),
                     " | ".join(c["tags"]),
+                    trade_date,
                 ])
         print(f"\n[CSV] 已保存 → {args.output_csv} ({len(final)} 只)")
 
