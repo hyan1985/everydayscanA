@@ -84,3 +84,19 @@ strategies:
       - { src: "流通市值(亿)", label: "流通市值(亿)" }
       - { src: "主力净流入(万)", label: "主力净流入(万)" }
       - { src: "主概念", label: "主概念" }
+
+  - name: "笔记哥选股"
+    short: "笔记哥"
+    workspace: "%SCRIPT_DIR%/strategies/bijige"
+    csv_path: "output/picks.csv"
+    fields:
+      ts_code: "ts_code"
+      name: "name"
+      score: "gain"
+      industry: ~
+      concept: "tags"
+    score_range: [0, 30]
+    extra_cols:
+      - { src: "gain", label: "涨幅(%)" }
+      - { src: "vol_ratio", label: "量比" }
+      - { src: "tags", label: "匹配模式" }

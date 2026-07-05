@@ -24,6 +24,7 @@ TIMEOUT_QL_DRAGON="${TIMEOUT_QL_DRAGON:-180}"
 TIMEOUT_ZHUSH="${TIMEOUT_ZHUSH:-150}"
 TIMEOUT_PH_AFTERCLOSE="${TIMEOUT_PH_AFTERCLOSE:-180}"
 TIMEOUT_STORAGE_IPO="${TIMEOUT_STORAGE_IPO:-120}"
+TIMEOUT_BIJIGE="${TIMEOUT_BIJIGE:-60}"
 
 # macOS 兼容: 没有 timeout 命令则用 perl 替代
 if ! command -v timeout &>/dev/null; then
@@ -150,7 +151,7 @@ done
 log "概念同步: ${SYNC_OK} 成功, ${SYNC_FAIL} 失败"
 
 PASS=0
-TOTAL=4
+TOTAL=5
 FAILED_TASKS=()
 
 # ── 任务 1: 擒龙猎手 ────────────────────────────────────
@@ -228,6 +229,23 @@ elif [[ $EXIT_CODE -eq 124 || $EXIT_CODE -eq 142 ]]; then
 else
   fail "存储IPO供应链 执行失败（退出码 $EXIT_CODE）"
   FAILED_TASKS+=("存储IPO供应链")
+fi
+
+# ── 任务 5: 笔记哥选股 ────────────────────────────────────
+echo ""
+log "[5/${TOTAL}] 笔记哥选股 — 六模式级联筛选（${TIMEOUT_BIJIGE}s 超时，本地 Parquet 数据）"
+EXIT_CODE=0
+cd "$STRATEGIES_DIR/bijige" && bash run.sh
+EXIT_CODE=$?
+if [[ $EXIT_CODE -eq 0 ]]; then
+  ok "笔记哥选股 完成"
+  PASS=$((PASS+1))
+elif [[ $EXIT_CODE -eq 124 || $EXIT_CODE -eq 142 ]]; then
+  warn "笔记哥选股 超时（${TIMEOUT_BIJIGE}s），跳过继续"
+  FAILED_TASKS+=("笔记哥选股(超时)")
+else
+  fail "笔记哥选股 执行失败（退出码 $EXIT_CODE）"
+  FAILED_TASKS+=("笔记哥选股")
 fi
 
 # ── 运行状态落盘（供聚合器在看板上显式标注本次失败/超时的策略）──

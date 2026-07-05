@@ -1315,10 +1315,12 @@ STRATEGY_COLORS = {
     "主升行情启动": "#ef4444",
     "盘后扫描追随": "#3b82f6",
     "存储IPO供应链": "#8b5cf6",
+    "笔记哥选股": "#06b6d4",
 }
 
 DISPLAY_LIMITS = {
     "存储IPO供应链": 40,
+    "笔记哥选股": 30,
 }
 
 TIER_BADGE_STYLE = {
