@@ -92,6 +92,9 @@ def _build_parquet_daily_cache(data_dir: str, days: int = 90) -> dict[str, pd.Da
         try:
             df = pd.read_parquet(os.path.join(daily_dir, fn))
             if len(df) >= 500:  # 全市场分区，至少 500 行
+                # Tushare 的 vol 列 → 笔记哥代码期望的 volume
+                if "vol" in df.columns:
+                    df = df.rename(columns={"vol": "volume"})
                 frames.append(df)
         except Exception:
             continue
@@ -416,13 +419,6 @@ def check_mode6(df: pd.DataFrame) -> bool:
 # ═══════════════════════════════════════════════════════
 #  MAIN
 # ═══════════════════════════════════════════════════════
-
-def _add_exchange_suffix(code: str) -> str:
-    """给6位代码加上交易所后缀 .SH / .SZ"""
-    if code.startswith(("60", "68")):
-        return code + ".SH"
-    return code + ".SZ"
-
 
 def _write_empty_csv(path: str):
     """写入空结果 CSV（仅表头），让聚合器知道'今天跑了但没选到'"""

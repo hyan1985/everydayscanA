@@ -94,9 +94,9 @@ strategies:
       name: "name"
       score: "gain"
       industry: ~
-      concept: "tags"
+      concept: ~
     score_range: [0, 30]
     extra_cols:
       - { src: "score", label: "涨幅(%)" }
       - { src: "vol_ratio", label: "量比" }
-      - { src: "concept", label: "匹配模式" }
+      - { src: "tags", label: "匹配模式" }
