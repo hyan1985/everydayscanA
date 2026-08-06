@@ -2,8 +2,8 @@ name: 每日选股流水线
 
 on:
   schedule:
-    # 北京时间 22:00 (UTC+8) = UTC 14:00，周一到周五
-    - cron: "0 14 * * 1-5"
+    # 目标实际执行约北京 22:00，调度器约 2h 延迟，提前到 UTC 12:05（北京 20:05）触发
+    - cron: "5 12 * * 1-5"
   workflow_dispatch:  # 允许手动触发
 
 permissions:
