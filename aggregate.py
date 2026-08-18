@@ -396,7 +396,6 @@ def load_config():
 
 # 量化项目：YYYYMMDD=交易日结果；YYYY-MM-DD=脚本运行日导出（勿用于聚合）
 _TRADE_DATE_FILE_RE = re.compile(r"^daily_selection_(\d{4}-?\d{2}-?\d{2})_cn\.csv$")
-_STORAGE_IPO_FILE_RE = re.compile(r"^storage_ipo_action_(\d{4}-?\d{2}-?\d{2})\.csv$")
 
 
 def _parse_trade_date_from_filename(path: Path, file_date_pattern: Optional[str] = None) -> Optional[str]:
@@ -405,7 +404,7 @@ def _parse_trade_date_from_filename(path: Path, file_date_pattern: Optional[str]
         m = re.match(file_date_pattern, path.name)
         if m:
             return _normalize_trade_date(m.group(1))
-    for pat in (_TRADE_DATE_FILE_RE, _STORAGE_IPO_FILE_RE):
+    for pat in (_TRADE_DATE_FILE_RE,):
         m = pat.match(path.name)
         if m:
             return _normalize_trade_date(m.group(1))
@@ -1314,12 +1313,10 @@ STRATEGY_COLORS = {
     "擒龙猎手": "#f59e0b",
     "主升行情启动": "#ef4444",
     "盘后扫描追随": "#3b82f6",
-    "存储IPO供应链": "#8b5cf6",
     "笔记哥选股": "#06b6d4",
 }
 
 DISPLAY_LIMITS = {
-    "存储IPO供应链": 40,
     "笔记哥选股": 30,
 }
 
@@ -1352,20 +1349,6 @@ def _tier_badge(text: str) -> str:
     return (
         f'<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;'
         f'font-weight:600;background:{bg};color:{fg};border:1px solid {border}">{text}</span>'
-    )
-
-
-def _storage_tab_summary(sdf: pd.DataFrame) -> str:
-    if sdf.empty or "档位" not in sdf.columns:
-        return ""
-    ok = int((sdf["档位"] == "可做").sum())
-    watch = int((sdf["档位"] == "观察").sum())
-    return (
-        f'<p style="color:#64748b;font-size:13px;margin-bottom:12px">'
-        f'长鑫存储(DRAM) / 长江存储(NAND) IPO 供应链映射 · '
-        f'<span style="color:#047857;font-weight:600">可做 {ok}</span> · '
-        f'<span style="color:#92400e;font-weight:600">观察 {watch}</span>'
-        f'</p>'
     )
 
 
@@ -1427,10 +1410,7 @@ def _render_strategy_picks_table(sdf: pd.DataFrame, sname: str) -> str:
     if sdf is None or sdf.empty:
         return '<p style="color:#94a3b8">暂无推荐标的</p>'
 
-    is_storage = sname == "存储IPO供应链"
     base_cols = ["ts_code", "name", "score_raw", "score_norm"]
-    if is_storage:
-        base_cols = ["ts_code", "name"]
     show_cols = base_cols.copy()
     col_labels = {"ts_code": "代码", "name": "名称", "score_raw": "原始分", "score_norm": "归一化分"}
 
@@ -1440,13 +1420,12 @@ def _render_strategy_picks_table(sdf: pd.DataFrame, sname: str) -> str:
             show_cols.append(c)
             col_labels[c] = c
 
-    if not is_storage:
-        if "concept" in sdf.columns and sdf["concept"].astype(str).str.strip().any():
-            show_cols.append("concept")
-            col_labels["concept"] = "概念/题材"
-        if "industry" in sdf.columns and sdf["industry"].astype(str).str.strip().any():
-            show_cols.insert(3, "industry")
-            col_labels["industry"] = "行业"
+    if "concept" in sdf.columns and sdf["concept"].astype(str).str.strip().any():
+        show_cols.append("concept")
+        col_labels["concept"] = "概念/题材"
+    if "industry" in sdf.columns and sdf["industry"].astype(str).str.strip().any():
+        show_cols.insert(3, "industry")
+        col_labels["industry"] = "行业"
     if "advice" in sdf.columns and "advice" not in show_cols:
         show_cols.append("advice")
         col_labels["advice"] = "建议"
@@ -1456,13 +1435,6 @@ def _render_strategy_picks_table(sdf: pd.DataFrame, sname: str) -> str:
     row_limit = DISPLAY_LIMITS.get(sname, 20)
     display_sdf = sdf
 
-    if is_storage and "档位" in sdf.columns:
-        tier_order = {"可做": 0, "观察": 1}
-        display_sdf = sdf.copy()
-        display_sdf["_sort_tier"] = display_sdf["档位"].map(tier_order).fillna(9)
-        display_sdf = display_sdf.sort_values(
-            ["_sort_tier", "score_norm"], ascending=[True, False]
-        )
     for _, row in display_sdf.head(row_limit).iterrows():
         cells = ""
         for c in show_cols:
@@ -1676,9 +1648,7 @@ def render_html(all_df: pd.DataFrame, resonance: pd.DataFrame, strategy_dfs: dic
             </div>"""
             continue
 
-        storage_intro = _storage_tab_summary(sdf) if sname == "存储IPO供应链" else ""
         tab_panels += f"""<div class="tab-panel" id="tab{i}" style="display:{panel_display}">
-            {storage_intro}
             {picks_table}
         </div>"""
 
@@ -1760,7 +1730,7 @@ tr:hover {{ background:#f8fafc; }}
   {_render_weak_strategies_html(oversold_candidates, defensive_stocks)}
 
   <div class="footer">
-    数据来源：擒龙猎手 / 主升行情启动 / 盘后扫描追随 / 存储IPO供应链<br>
+    数据来源：擒龙猎手 / 主升行情启动 / 盘后扫描追随<br>
     仅为量化模型推演，不构成交易建议，入市有风险，投资需谨慎。
   </div>
 </div>

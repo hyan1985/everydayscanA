@@ -23,7 +23,6 @@ TASK_INTERVAL="${TASK_INTERVAL:-10}"
 TIMEOUT_QL_DRAGON="${TIMEOUT_QL_DRAGON:-180}"
 TIMEOUT_ZHUSH="${TIMEOUT_ZHUSH:-150}"
 TIMEOUT_PH_AFTERCLOSE="${TIMEOUT_PH_AFTERCLOSE:-180}"
-TIMEOUT_STORAGE_IPO="${TIMEOUT_STORAGE_IPO:-120}"
 TIMEOUT_BIJIGE="${TIMEOUT_BIJIGE:-60}"
 
 # macOS 兼容: 没有 timeout 命令则用 perl 替代
@@ -126,7 +125,6 @@ log "[0.5] 概念配置 — 同步统一 concepts.yaml → 各策略 config/them
 SYNC_TARGETS=(
   "$STRATEGIES_DIR/ql_dragon"
   "$STRATEGIES_DIR/zhush_mainrise"
-  "$STRATEGIES_DIR/lh_quant"
   "$STRATEGIES_DIR/ph_afterclose"
 )
 SYNC_OK=0
@@ -151,7 +149,7 @@ done
 log "概念同步: ${SYNC_OK} 成功, ${SYNC_FAIL} 失败"
 
 PASS=0
-TOTAL=5
+TOTAL=4
 FAILED_TASKS=()
 
 # ── 任务 1: 擒龙猎手 ────────────────────────────────────
@@ -214,26 +212,9 @@ fi
 log "等待 ${TASK_INTERVAL}s 再执行下一策略..."
 sleep "$TASK_INTERVAL"
 
-# ── 任务 4: 存储 IPO 供应链 ──────────────────────────────
+# ── 任务 4: 笔记哥选股 ────────────────────────────────────
 echo ""
-log "[4/${TOTAL}] 存储IPO供应链 — 长鑫/长存可上车扫描（${TIMEOUT_STORAGE_IPO}s 超时）"
-EXIT_CODE=0
-cd "$STRATEGIES_DIR/lh_quant" && timeout "$TIMEOUT_STORAGE_IPO" python3 storage_ipo_scan.py
-EXIT_CODE=$?
-if [[ $EXIT_CODE -eq 0 ]]; then
-  ok "存储IPO供应链 完成"
-  PASS=$((PASS+1))
-elif [[ $EXIT_CODE -eq 124 || $EXIT_CODE -eq 142 ]]; then
-  warn "存储IPO供应链 超时（${TIMEOUT_STORAGE_IPO}s），跳过继续"
-  FAILED_TASKS+=("存储IPO供应链(超时)")
-else
-  fail "存储IPO供应链 执行失败（退出码 $EXIT_CODE）"
-  FAILED_TASKS+=("存储IPO供应链")
-fi
-
-# ── 任务 5: 笔记哥选股 ────────────────────────────────────
-echo ""
-log "[5/${TOTAL}] 笔记哥选股 — 六模式级联筛选（${TIMEOUT_BIJIGE}s 超时，本地 Parquet 数据）"
+log "[4/${TOTAL}] 笔记哥选股 — 六模式级联筛选（${TIMEOUT_BIJIGE}s 超时，本地 Parquet 数据）"
 EXIT_CODE=0
 cd "$STRATEGIES_DIR/bijige" && timeout "$TIMEOUT_BIJIGE" bash run.sh
 EXIT_CODE=$?

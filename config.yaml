@@ -58,33 +58,6 @@ strategies:
       - { src: "安全", label: "安全" }
       - { src: "tag",  label: "标签" }
 
-  - name: "存储IPO供应链"
-    short: "存储"
-    workspace: "%SCRIPT_DIR%/strategies/lh_quant"
-    csv_glob: "output/daily/storage_ipo_action_*.csv"
-    file_date_pattern: "^storage_ipo_action_(\\d{8})\\.csv$"
-    tier_column: "操作档位"
-    tier_score_map:
-      可做: 90
-      观察: 65
-    resonance_tiers: ["可做"]
-    display_limit: 40
-    fields:
-      ts_code: "股票代码"
-      name: "股票名称"
-      score: null
-      industry: "industry"
-      concept: "供应链环节"
-    score_range: [0, 100]
-    extra_cols:
-      - { src: "操作档位", label: "档位" }
-      - { src: "说明", label: "说明" }
-      - { src: "pct_chg", label: "涨跌幅(%)" }
-      - { src: "turnover_rate", label: "换手(%)" }
-      - { src: "流通市值(亿)", label: "流通市值(亿)" }
-      - { src: "主力净流入(万)", label: "主力净流入(万)" }
-      - { src: "主概念", label: "主概念" }
-
   - name: "笔记哥选股"
     short: "笔记哥"
     workspace: "%SCRIPT_DIR%/strategies/bijige"
