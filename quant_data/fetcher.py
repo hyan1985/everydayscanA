@@ -43,6 +43,23 @@ def _trade_cal_last_open(cal: pd.DataFrame) -> str:
     return str(opens.max()) if not opens.empty else ""
 
 
+def _today_data_ready() -> bool:
+    """当天行情数据是否已生成：A股 15:00 收盘，数据一般在收盘后一段才可获取。
+
+    未收盘（盘中/盘前手动触发）时返回 False，各策略应回退到上一交易日。
+    """
+    now = datetime.now()
+    return (now.hour, now.minute) >= (15, 30)
+
+
+def _clamp_end_to_available_trade_date(end: str) -> str:
+    """若 end 是今天但当天数据尚未生成（未收盘），回退到昨天，避免把未开盘的今天当交易日。"""
+    today = datetime.now().strftime("%Y%m%d")
+    if end >= today and not _today_data_ready():
+        return (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+    return end
+
+
 def trade_cal_needs_refresh(cal: Optional[pd.DataFrame], today: Optional[str] = None) -> bool:
     """日历是否需要刷新：表未覆盖到今天，或最近开市日早于今天。"""
     today = today or datetime.now().strftime("%Y%m%d")
@@ -205,6 +222,8 @@ def fetch_stock_basic_for_date(pro, date: str) -> pd.DataFrame:
 
 def _latest_open_date(pro, end: str) -> str:
     cal = ensure_trade_cal_current(pro, quiet=True)
+    # 当天未收盘时数据未生成，回退到昨天作为上限，取最近已完成的交易日
+    end = _clamp_end_to_available_trade_date(end)
     if cal is not None and not cal.empty:
         mask = (cal["cal_date"].astype(str) <= end) & (
             cal["is_open"].astype(int) == 1
@@ -229,7 +248,7 @@ def ensure_recent_market_partitions(
     if cal is None or cal.empty:
         return last_open
     open_dates = sorted(
-        cal[(cal["cal_date"].astype(str) <= today) & (cal["is_open"].astype(int) == 1)][
+        cal[(cal["cal_date"].astype(str) <= last_open) & (cal["is_open"].astype(int) == 1)][
             "cal_date"
         ].astype(str).tolist()
     )[-lookback_open_days:]

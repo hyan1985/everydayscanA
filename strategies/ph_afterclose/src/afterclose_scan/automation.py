@@ -282,6 +282,9 @@ def build_auto_input(
     pro = TushareClient.from_secure_config().pro()
 
     end = datetime.now().date()
+    # 当天未收盘时数据未生成：回退到昨天作为查询上限，取最近已收盘交易日
+    if (datetime.now().hour, datetime.now().minute) < (15, 30):
+        end = end - timedelta(days=1)
     if target_trade_date:
         start = datetime.strptime(str(target_trade_date), "%Y%m%d").date() - timedelta(days=5)
     else:
@@ -304,12 +307,12 @@ def build_auto_input(
     else:
         last_trade_date = str(cal.iloc[-1]["cal_date"]).split(".")[0]
 
-    # 非交易日自动回退到最近交易日（而非抛异常中断流水线）
+    # 非交易日 / 当天未收盘自动回退到最近已收盘交易日（而非抛异常中断流水线）
     today_ymd = datetime.now().strftime("%Y%m%d")
     if last_trade_date != today_ymd:
         print(
-            f"[盘后扫描] 今天 {today_ymd} 非交易日，"
-            f"自动使用最近交易日 {last_trade_date} 的数据。"
+            f"[盘后扫描] 今天 {today_ymd} 非交易日或未收盘，"
+            f"自动使用最近已收盘交易日 {last_trade_date} 的数据。"
         )
 
     daily = pro.daily(trade_date=last_trade_date, fields="ts_code,open,close,pct_chg,vol,amount")

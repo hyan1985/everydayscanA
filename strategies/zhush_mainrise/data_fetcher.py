@@ -19,9 +19,12 @@ class DataFetcher:
         return self._raw_pro
 
     def get_trade_dates(self, days=60):
-        """获取最近 N 个交易日"""
-        today = datetime.datetime.now().strftime('%Y%m%d')
-        start_date = (datetime.datetime.now() - datetime.timedelta(days=days*2)).strftime('%Y%m%d')
+        """获取最近 N 个交易日（当天未收盘时自动回退到上一交易日）"""
+        now = datetime.datetime.now()
+        today = now.strftime('%Y%m%d')
+        if (now.hour, now.minute) < (15, 30):
+            today = (now - datetime.timedelta(days=1)).strftime('%Y%m%d')
+        start_date = (now - datetime.timedelta(days=days*2)).strftime('%Y%m%d')
         
         df = self.pro.trade_cal(exchange='SSE', is_open='1', start_date=start_date, end_date=today)
         dates = df['cal_date'].values.tolist()
