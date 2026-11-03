@@ -1,0 +1,42 @@
+name: 依赖检查与 patch 自动合并
+
+on:
+  pull_request:
+    paths:
+      - "requirements*.txt"
+      - "**/requirements*.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+      - name: 验证关键依赖能导入
+        run: |
+          python -c "import tushare, pandas, numpy, yaml, tqdm, pyarrow; from tushare.trader import trader"
+      - name: 打印实际版本
+        run: pip list | grep -iE "tushare|pandas|numpy|six" || true
+
+  merge-patch:
+    needs: check
+    # 只自动合并 patch 级别的更新；minor/major 留给人工判断
+    if: |
+      github.actor == 'dependabot[bot]' &&
+      contains(github.event.pull_request.title, 'patch')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 合并
+        run: gh pr merge --squash --delete-branch "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
